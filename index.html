@@ -741,15 +741,13 @@
         Rat: '🐀', Slime: '🫧', Stickbug: '🌿', 'Sentient Egg': '🥚'
       };
 
-const WIKI_IMAGE_BASE =
-  'https://moonlightpeaks.wiki.gg/wiki/Special:Redirect/file/';
+function getCritterImageUrl(critterName) {
+  if (!critterName) return '';
 
-function getCritterImageUrl(iconFile) {
-  if (!iconFile) return '';
+  const fileName =
+    critterName.trim().replace(/\s+/g, '_') + '.png';
 
-  const wikiFileName = iconFile.replaceAll(' ', '_');
-
-  return WIKI_IMAGE_BASE + encodeURIComponent(wikiFileName);
+  return `./${encodeURIComponent(fileName)}`;
 }
 
       const els = Object.fromEntries([
@@ -814,7 +812,7 @@ function getCritterImageUrl(iconFile) {
       function cardHTML(critter) {
         const isCaught = caught.has(critter.id);
         const fallbackIcon = typeIcons[critter.type] || '✦';
-const imageUrl = getCritterImageUrl(critter.iconFile);
+const imageUrl = getCritterImageUrl(critter.name);
 
 const iconHTML = imageUrl
   ? `<img
