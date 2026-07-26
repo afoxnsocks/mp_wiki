@@ -345,6 +345,17 @@
       background: linear-gradient(145deg, color-mix(in srgb, var(--accent), transparent 77%), color-mix(in srgb, var(--accent-2), transparent 84%));
       font-size: 1.55rem;
     }
+    .critter-image {
+  display: block;
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.icon-fallback {
+  line-height: 1;
+}
     .critter-name { margin: 0; font-size: 1.04rem; line-height: 1.2; letter-spacing: -.02em; }
     .critter-type { margin-top: 4px; color: var(--muted); font-size: .78rem; }
     .catch-check { position: relative; display: inline-grid; place-items: center; width: 34px; height: 34px; cursor: pointer; }
@@ -695,7 +706,7 @@
 
     <footer class="footer">
       <span><strong id="datasetCount">0</strong> critters loaded • Works offline • Progress stored locally</span>
-      <span>Built from the supplied critter table; type icons are placeholders because the source included image filenames rather than image files.</span>
+<span>Built from the Moonlight Peaks critter table • Critter artwork loaded from the Moonlight Peaks Wiki</span>
     </footer>
   </main>
 
@@ -729,6 +740,17 @@
         Butterfly: '🦋', Beetle: '🪲', Fly: '🪰', Spider: '🕷️', Snail: '🐌', Slug: '🐌',
         Rat: '🐀', Slime: '🫧', Stickbug: '🌿', 'Sentient Egg': '🥚'
       };
+
+const WIKI_IMAGE_BASE =
+  'https://moonlightpeaks.wiki.gg/wiki/Special:Redirect/file/';
+
+function getCritterImageUrl(iconFile) {
+  if (!iconFile) return '';
+
+  const wikiFileName = iconFile.replaceAll(' ', '_');
+
+  return WIKI_IMAGE_BASE + encodeURIComponent(wikiFileName);
+}
 
       const els = Object.fromEntries([
         'critterGrid','emptyState','searchInput','statusFilter','seasonFilter','categoryFilter','locationFilter','sortSelect',
@@ -791,13 +813,28 @@
 
       function cardHTML(critter) {
         const isCaught = caught.has(critter.id);
+        const fallbackIcon = typeIcons[critter.type] || '✦';
+const imageUrl = getCritterImageUrl(critter.iconFile);
+
+const iconHTML = imageUrl
+  ? `<img
+       class="critter-image"
+       src="${escapeHTML(imageUrl)}"
+       alt=""
+       loading="lazy"
+       onerror="this.hidden=true; this.nextElementSibling.hidden=false"
+     >
+     <span class="icon-fallback" hidden>${fallbackIcon}</span>`
+  : `<span class="icon-fallback">${fallbackIcon}</span>`;
         const special = critter.notes
           ? `<div class="special-note"><span aria-hidden="true">✦</span><span>${escapeHTML(critter.notes)}</span></div>`
           : `<div class="special-note missing"><span aria-hidden="true">○</span><span>No special catch condition listed</span></div>`;
         return `<article class="critter-card ${isCaught ? 'caught' : ''}" data-id="${escapeHTML(critter.id)}">
           <div class="caught-strip" aria-hidden="true"></div>
           <div class="card-main">
-            <div class="type-icon" title="${escapeHTML(critter.iconFile || critter.type)}" aria-hidden="true">${typeIcons[critter.type] || '✦'}</div>
+<div class="type-icon" title="${escapeHTML(critter.iconFile || critter.type)}" aria-hidden="true">
+  ${iconHTML}
+</div>
             <div><h3 class="critter-name">${escapeHTML(critter.name)}</h3><div class="critter-type">${escapeHTML(critter.type)} · ${escapeHTML(critter.category)}</div></div>
             <label class="catch-check" title="Mark ${escapeHTML(critter.name)} as ${isCaught ? 'uncaught' : 'caught'}">
               <input type="checkbox" class="caught-checkbox" ${isCaught ? 'checked' : ''} aria-label="Caught ${escapeHTML(critter.name)}" />
