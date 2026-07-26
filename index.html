@@ -1,0 +1,1054 @@
+<!doctype html>
+<html lang="en" data-theme="midnight">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="An interactive, offline-friendly critter checklist with search, filters, saved progress, and catch details." />
+  <title>Critter Catcher</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #181027;
+      --bg-deep: #0c0815;
+      --surface: rgba(34, 24, 52, .82);
+      --surface-solid: #241a36;
+      --surface-2: #322342;
+      --surface-hover: #432f58;
+      --text: #f7f4ff;
+      --muted: #d0bedc;
+      --faint: #a38faf;
+      --accent: #e7a6ff;
+      --accent-2: #b9efa6;
+      --accent-3: #ffe7a1;
+      --danger: #ff8da1;
+      --border: rgba(238, 212, 255, .2);
+      --shadow: 0 18px 50px rgba(0,0,0,.28);
+      --ring-track: rgba(255,255,255,.10);
+      --chip: rgba(255,255,255,.075);
+      --input: rgba(16, 10, 27, .66);
+      --overlay: rgba(6, 7, 17, .76);
+      --radius-xl: 26px;
+      --radius-lg: 18px;
+      --radius-md: 13px;
+      --radius-sm: 10px;
+      --spring: #9ee4b8;
+      --summer: #ffd36f;
+      --autumn: #f6a56f;
+      --winter: #a8d8ff;
+    }
+
+    html[data-theme="daylight"] {
+      color-scheme: light;
+      --bg: #f5f0ff;
+      --bg-deep: #ebe4f8;
+      --surface: rgba(255,255,255,.86);
+      --surface-solid: #ffffff;
+      --surface-2: #f2edfb;
+      --surface-hover: #ece4fa;
+      --text: #28243a;
+      --muted: #666078;
+      --faint: #898397;
+      --accent: #7750b8;
+      --accent-2: #168f77;
+      --accent-3: #9a6800;
+      --danger: #bd3952;
+      --border: rgba(71, 52, 105, .14);
+      --shadow: 0 18px 50px rgba(73, 48, 107, .13);
+      --ring-track: rgba(83, 62, 114, .10);
+      --chip: rgba(82, 60, 117, .07);
+      --input: rgba(245, 240, 255, .88);
+      --overlay: rgba(44, 36, 58, .44);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      position: relative;
+      isolation: isolate;
+      overflow-x: hidden;
+      background: #100b1c;
+      color: var(--text);
+      font-family: Inter, ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      pointer-events: none;
+      background:
+        linear-gradient(180deg, rgba(24, 13, 41, .12) 0%, rgba(12, 8, 24, .24) 54%, rgba(8, 6, 15, .7) 100%),
+        radial-gradient(ellipse at center, transparent 33%, rgba(7, 4, 14, .34) 100%);
+    }
+    .scene-background {
+      position: fixed;
+      inset: 0;
+      z-index: -3;
+      overflow: hidden;
+      pointer-events: none;
+      background: #211532;
+    }
+    .moonlit-scene {
+      display: block;
+      width: 100%;
+      height: 100%;
+      min-width: 100%;
+      min-height: 100%;
+      image-rendering: pixelated;
+      filter: saturate(.92) contrast(1.03);
+    }
+    .scene-background::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(90deg, rgba(8, 5, 14, .34), transparent 18%, transparent 82%, rgba(8, 5, 14, .34)),
+        repeating-linear-gradient(0deg, rgba(255,255,255,.012) 0 1px, transparent 1px 4px);
+      mix-blend-mode: soft-light;
+    }
+    .firefly {
+      --fly-x: 0px;
+      --fly-y: -9px;
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      border-radius: 1px;
+      background: #fff7a8;
+      box-shadow: 0 0 5px 2px rgba(255, 240, 139, .76), 0 0 15px 5px rgba(231, 190, 102, .22);
+      opacity: .72;
+      animation: firefly-float 5.8s ease-in-out infinite alternate;
+    }
+    .firefly-one { left: 14%; top: 57%; --fly-x: 22px; --fly-y: -18px; animation-delay: -1.2s; }
+    .firefly-two { left: 33%; top: 70%; --fly-x: -18px; --fly-y: -11px; animation-duration: 7.1s; animation-delay: -3s; }
+    .firefly-three { right: 20%; top: 61%; --fly-x: 16px; --fly-y: -24px; animation-duration: 6.4s; animation-delay: -4.2s; }
+    .firefly-four { right: 8%; top: 76%; --fly-x: -22px; --fly-y: -14px; animation-duration: 8s; animation-delay: -2.1s; }
+    @keyframes firefly-float {
+      0% { transform: translate(0, 0); opacity: .3; }
+      42% { opacity: .92; }
+      100% { transform: translate(var(--fly-x), var(--fly-y)); opacity: .46; }
+    }
+    html[data-theme="daylight"] .moonlit-scene { filter: saturate(.72) brightness(1.18) contrast(.92); }
+    html[data-theme="daylight"] body::before {
+      background: linear-gradient(180deg, rgba(244, 228, 255, .1), rgba(235, 224, 248, .36));
+    }
+
+    button, input, select, textarea { font: inherit; }
+    button, select { cursor: pointer; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--accent), white 20%);
+      outline-offset: 2px;
+    }
+    .sr-only {
+      position: absolute !important;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0, 0, 0, 0);
+      white-space: nowrap; border: 0;
+    }
+
+    .page-shell { position: relative; z-index: 1; width: min(1500px, 100%); margin: 0 auto; padding: 24px clamp(16px, 3vw, 42px) 56px; }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 24px;
+      align-items: center;
+      min-height: 230px;
+      padding: clamp(26px, 5vw, 54px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      background:
+        linear-gradient(120deg, rgba(231,166,255,.18), transparent 48%),
+        linear-gradient(300deg, rgba(185,239,166,.08), transparent 42%),
+        linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px),
+        var(--surface);
+      background-size: auto, auto, 5px 5px, 5px 5px, auto;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+    .hero::before, .hero::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      pointer-events: none;
+    }
+    .hero::before { width: 180px; height: 180px; right: -45px; top: -55px; background: rgba(185,140,255,.14); }
+    .hero::after { width: 110px; height: 110px; right: 150px; bottom: -50px; background: rgba(119,230,197,.10); }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      color: var(--accent-2);
+      font-size: .78rem;
+      font-weight: 800;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+    h1 { margin: 0; max-width: 800px; font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-size: clamp(2.3rem, 6vw, 5.3rem); line-height: .95; letter-spacing: -.075em; text-shadow: 0 4px 0 rgba(65,39,83,.48), 0 0 30px rgba(238,187,255,.2); }
+    .hero-copy p { max-width: 680px; margin: 18px 0 0; color: var(--muted); font-size: clamp(1rem, 2vw, 1.15rem); }
+    .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px; }
+
+    .progress-cluster { position: relative; z-index: 1; display: grid; justify-items: center; gap: 14px; min-width: 190px; }
+    .progress-ring {
+      --progress: 0deg;
+      display: grid;
+      place-items: center;
+      width: 154px; height: 154px;
+      border-radius: 50%;
+      background: conic-gradient(var(--accent-2) var(--progress), var(--ring-track) 0);
+      box-shadow: inset 0 0 0 1px var(--border), 0 18px 35px rgba(0,0,0,.15);
+    }
+    .progress-ring::before {
+      content: "";
+      grid-area: 1 / 1;
+      width: 122px; height: 122px;
+      border-radius: 50%;
+      background: var(--surface-solid);
+      box-shadow: inset 0 0 0 1px var(--border);
+    }
+    .progress-number { grid-area: 1 / 1; position: relative; text-align: center; }
+    .progress-number strong { display: block; font-size: 2rem; line-height: 1; }
+    .progress-number span { color: var(--muted); font-size: .78rem; }
+    .progress-caption { color: var(--muted); text-align: center; font-size: .9rem; }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 42px;
+      padding: 9px 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface-2);
+      color: var(--text);
+      font-weight: 760;
+      text-decoration: none;
+      transition: transform .16s ease, background .16s ease, border-color .16s ease;
+    }
+    .button:hover { transform: translateY(-1px); background: var(--surface-hover); border-color: color-mix(in srgb, var(--accent), transparent 55%); }
+    .button.primary { background: var(--accent); color: #171124; border-color: transparent; }
+    html[data-theme="daylight"] .button.primary { color: white; }
+    .button.ghost { background: transparent; }
+    .button.danger { color: var(--danger); }
+    .button.small { min-height: 35px; padding: 7px 10px; font-size: .84rem; }
+    .icon-button { width: 42px; padding: 0; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 16px 0;
+    }
+    .stat {
+      padding: 17px 18px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      box-shadow: 0 10px 30px rgba(0,0,0,.08);
+      backdrop-filter: blur(12px);
+    }
+    .stat-label { color: var(--muted); font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 800; }
+    .stat-value { margin-top: 4px; font-size: 1.55rem; font-weight: 850; letter-spacing: -.035em; }
+    .stat-sub { color: var(--faint); font-size: .78rem; }
+
+    .toolbar {
+      position: sticky;
+      top: 10px;
+      z-index: 20;
+      margin: 16px 0;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: color-mix(in srgb, var(--surface-solid), transparent 8%);
+      box-shadow: 0 16px 35px rgba(0,0,0,.17);
+      backdrop-filter: blur(22px);
+    }
+    .toolbar-main { display: grid; grid-template-columns: minmax(230px, 1.7fr) repeat(4, minmax(135px, .65fr)) auto; gap: 10px; align-items: end; }
+    .field { display: grid; gap: 6px; min-width: 0; }
+    .field > span { color: var(--muted); font-size: .72rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+    .control {
+      width: 100%;
+      height: 43px;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: var(--input);
+      color: var(--text);
+    }
+    .search-wrap { position: relative; }
+    .search-wrap .control { padding-left: 39px; padding-right: 52px; }
+    .search-icon { position: absolute; left: 13px; top: 50%; translate: 0 -50%; color: var(--faint); pointer-events: none; }
+    .shortcut { position: absolute; right: 10px; top: 50%; translate: 0 -50%; padding: 2px 7px; border: 1px solid var(--border); border-radius: 6px; color: var(--faint); font-size: .7rem; background: var(--surface-2); }
+    .toolbar-extra { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--border); }
+    .toggle-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--chip);
+      color: var(--muted);
+      font-size: .82rem;
+      font-weight: 700;
+      cursor: pointer;
+      user-select: none;
+    }
+    .toggle input { accent-color: var(--accent); }
+    .view-switch { display: inline-flex; padding: 3px; gap: 3px; border: 1px solid var(--border); border-radius: 11px; background: var(--input); }
+    .view-switch button { min-width: 36px; height: 31px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); }
+    .view-switch button.active { background: var(--surface-hover); color: var(--text); }
+
+    .results-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin: 22px 2px 12px; }
+    .results-title { margin: 0; font-size: 1rem; }
+    .results-title span { color: var(--muted); font-weight: 500; }
+    .bulk-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .critter-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .critter-card {
+      position: relative;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      min-width: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      box-shadow: 0 12px 30px rgba(0,0,0,.10);
+      overflow: hidden;
+      transition: transform .18s ease, border-color .18s ease, opacity .18s ease;
+      backdrop-filter: blur(12px);
+    }
+    .critter-card:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--accent), transparent 48%); box-shadow: 0 16px 36px rgba(8,4,14,.28), 0 0 22px rgba(222,161,255,.06); }
+    .critter-card.caught { border-color: color-mix(in srgb, var(--accent-2), transparent 55%); }
+    .critter-card.caught .critter-name { text-decoration: line-through; text-decoration-thickness: 1.5px; text-decoration-color: color-mix(in srgb, var(--accent-2), transparent 20%); color: var(--muted); }
+    .caught-strip { height: 4px; background: transparent; }
+    .critter-card.caught .caught-strip { background: linear-gradient(90deg, var(--accent-2), var(--accent)); }
+    .card-main { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 15px 15px 10px; }
+    .type-icon {
+      display: grid;
+      place-items: center;
+      width: 50px; height: 50px;
+      flex: 0 0 auto;
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      background: linear-gradient(145deg, color-mix(in srgb, var(--accent), transparent 77%), color-mix(in srgb, var(--accent-2), transparent 84%));
+      font-size: 1.55rem;
+    }
+    .critter-name { margin: 0; font-size: 1.04rem; line-height: 1.2; letter-spacing: -.02em; }
+    .critter-type { margin-top: 4px; color: var(--muted); font-size: .78rem; }
+    .catch-check { position: relative; display: inline-grid; place-items: center; width: 34px; height: 34px; cursor: pointer; }
+    .catch-check input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+    .checkmark {
+      display: grid;
+      place-items: center;
+      width: 30px; height: 30px;
+      border: 2px solid color-mix(in srgb, var(--muted), transparent 35%);
+      border-radius: 10px;
+      color: transparent;
+      font-weight: 950;
+      transition: all .16s ease;
+    }
+    .catch-check input:checked + .checkmark { background: var(--accent-2); border-color: var(--accent-2); color: #10231d; transform: rotate(-3deg) scale(1.04); }
+    .catch-check input:focus-visible + .checkmark { outline: 3px solid color-mix(in srgb, var(--accent), white 20%); outline-offset: 3px; }
+
+    .card-facts { display: grid; gap: 9px; padding: 0 15px 13px; }
+    .fact-row { display: grid; grid-template-columns: 22px 1fr; gap: 7px; align-items: start; min-width: 0; color: var(--muted); font-size: .84rem; }
+    .fact-row .fact-icon { text-align: center; }
+    .fact-row strong { color: var(--text); font-weight: 740; }
+    .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+    .chip { display: inline-flex; align-items: center; min-height: 23px; padding: 2px 8px; border: 1px solid var(--border); border-radius: 999px; background: var(--chip); color: var(--muted); font-size: .7rem; font-weight: 750; }
+    .chip.spring { color: var(--spring); }
+    .chip.summer { color: var(--summer); }
+    .chip.autumn { color: var(--autumn); }
+    .chip.winter { color: var(--winter); }
+    html[data-theme="daylight"] .chip.spring,
+    html[data-theme="daylight"] .chip.summer,
+    html[data-theme="daylight"] .chip.autumn,
+    html[data-theme="daylight"] .chip.winter { filter: saturate(1.4) brightness(.68); }
+    .special-note { display: grid; grid-template-columns: auto 1fr; gap: 7px; padding: 9px 10px; border: 1px solid color-mix(in srgb, var(--accent-3), transparent 70%); border-radius: 10px; background: color-mix(in srgb, var(--accent-3), transparent 91%); color: var(--text); font-size: .79rem; }
+    .special-note.missing { border-color: var(--border); background: var(--chip); color: var(--faint); }
+
+    .card-details { align-self: end; border-top: 1px solid var(--border); }
+    .card-details summary { display: flex; justify-content: space-between; align-items: center; min-height: 41px; padding: 8px 15px; color: var(--muted); font-size: .79rem; font-weight: 760; cursor: pointer; list-style: none; }
+    .card-details summary::-webkit-details-marker { display: none; }
+    .card-details summary::after { content: "+"; font-size: 1.15rem; }
+    .card-details[open] summary::after { content: "−"; }
+    .details-content { padding: 0 15px 15px; }
+    .personal-note { display: grid; gap: 6px; }
+    .personal-note label { color: var(--muted); font-size: .75rem; font-weight: 760; }
+    .personal-note textarea { width: 100%; min-height: 76px; resize: vertical; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--input); color: var(--text); }
+    .saved-hint { min-height: 18px; color: var(--accent-2); font-size: .7rem; }
+
+    .critter-grid.list-view { grid-template-columns: 1fr; gap: 8px; }
+    .list-view .critter-card { grid-template-columns: 4px minmax(260px, 1.1fr) minmax(380px, 2fr) minmax(185px, .7fr); grid-template-rows: auto; align-items: stretch; }
+    .list-view .caught-strip { width: 4px; height: 100%; }
+    .list-view .card-main { padding: 12px 14px; }
+    .list-view .card-facts { grid-template-columns: minmax(220px, 1.3fr) minmax(180px, 1fr) minmax(130px, .7fr); align-items: center; padding: 12px 14px; }
+    .list-view .special-note { margin: 0; }
+    .list-view .card-details { border-top: 0; border-left: 1px solid var(--border); }
+    .list-view .card-details summary { height: 100%; }
+    .list-view .details-content { position: absolute; z-index: 5; right: 10px; top: calc(100% - 8px); width: min(390px, calc(100vw - 42px)); padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-solid); box-shadow: var(--shadow); }
+
+    .empty-state { display: none; place-items: center; min-height: 320px; padding: 50px 20px; border: 1px dashed var(--border); border-radius: var(--radius-lg); color: var(--muted); text-align: center; }
+    .empty-state.show { display: grid; }
+    .empty-state .emoji { font-size: 3rem; }
+    .empty-state h2 { margin: 8px 0 4px; color: var(--text); }
+    .empty-state p { margin: 0; max-width: 450px; }
+
+    .footer { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-top: 30px; padding: 18px 2px 0; color: var(--faint); font-size: .78rem; }
+    .footer a { color: var(--muted); }
+
+    .menu-wrap { position: relative; }
+    .menu {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 8px);
+      z-index: 40;
+      display: none;
+      min-width: 215px;
+      padding: 7px;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      background: var(--surface-solid);
+      box-shadow: var(--shadow);
+    }
+    .menu.open { display: grid; }
+    .menu button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px; border: 0; border-radius: 9px; background: transparent; color: var(--text); text-align: left; }
+    .menu button:hover { background: var(--surface-2); }
+    .menu hr { width: 100%; border: 0; border-top: 1px solid var(--border); }
+
+    .toast-stack { position: fixed; right: 18px; bottom: 18px; z-index: 100; display: grid; gap: 9px; pointer-events: none; }
+    .toast { max-width: min(380px, calc(100vw - 36px)); padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); animation: toast-in .22s ease both; }
+    .toast.good { border-color: color-mix(in srgb, var(--accent-2), transparent 60%); }
+    .toast.bad { border-color: color-mix(in srgb, var(--danger), transparent 60%); }
+    @keyframes toast-in { from { transform: translateY(9px); opacity: 0; } }
+
+    dialog {
+      width: min(520px, calc(100vw - 30px));
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--surface-solid);
+      color: var(--text);
+      box-shadow: var(--shadow);
+    }
+    dialog::backdrop { background: var(--overlay); backdrop-filter: blur(5px); }
+    .dialog-body { padding: 22px; }
+    .dialog-body h2 { margin: 0 0 8px; }
+    .dialog-body p { margin: 0 0 18px; color: var(--muted); }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 9px; }
+
+    @media (max-width: 1160px) {
+      .toolbar-main { grid-template-columns: 1.5fr repeat(2, 1fr); }
+      .toolbar-main .view-control { grid-column: auto; }
+      .critter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .list-view .critter-card { grid-template-columns: 4px minmax(230px, 1fr) minmax(330px, 1.6fr); }
+      .list-view .card-details { grid-column: 2 / -1; border-left: 0; border-top: 1px solid var(--border); }
+      .list-view .card-details summary { height: auto; }
+    }
+    @media (max-width: 780px) {
+      .page-shell { padding: 12px 12px 38px; }
+      .hero { grid-template-columns: 1fr; min-height: 0; padding: 28px 22px; }
+      .progress-cluster { grid-template-columns: auto 1fr; justify-items: start; min-width: 0; }
+      .progress-ring { width: 100px; height: 100px; }
+      .progress-ring::before { width: 78px; height: 78px; }
+      .progress-number strong { font-size: 1.45rem; }
+      .progress-caption { text-align: left; }
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .toolbar { position: static; }
+      .toolbar-main { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .toolbar-main .search-field { grid-column: 1 / -1; }
+      .toolbar-extra { align-items: flex-start; flex-direction: column; }
+      .critter-grid { grid-template-columns: 1fr; }
+      .critter-grid.list-view { gap: 12px; }
+      .list-view .critter-card { display: grid; grid-template-columns: 4px 1fr; }
+      .list-view .card-main, .list-view .card-facts, .list-view .card-details { grid-column: 2; }
+      .list-view .caught-strip { grid-row: 1 / 4; }
+      .list-view .card-facts { grid-template-columns: 1fr; }
+      .list-view .card-details { border-left: 0; border-top: 1px solid var(--border); }
+      .list-view .details-content { position: static; width: auto; margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+      .footer { flex-direction: column; align-items: flex-start; }
+    }
+    @media (max-width: 480px) {
+      h1 { font-size: 2.55rem; }
+      .hero-actions .button { flex: 1 1 auto; }
+      .stats { gap: 8px; }
+      .stat { padding: 14px; }
+      .toolbar-main { grid-template-columns: 1fr; }
+      .toolbar-main .search-field { grid-column: auto; }
+      .results-head { align-items: flex-start; flex-direction: column; }
+      .progress-cluster { grid-template-columns: 1fr; }
+      .progress-caption { text-align: center; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="scene-background" aria-hidden="true">
+    <svg class="moonlit-scene" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" role="presentation" shape-rendering="crispEdges">
+      <defs>
+        <linearGradient id="nightSky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#a77bd9" />
+          <stop offset="0.38" stop-color="#6b4c9c" />
+          <stop offset="0.72" stop-color="#352650" />
+          <stop offset="1" stop-color="#171126" />
+        </linearGradient>
+        <radialGradient id="moonGlow" cx="50%" cy="42%" r="50%">
+          <stop offset="0" stop-color="#fff3ff" stop-opacity="0.9" />
+          <stop offset="0.28" stop-color="#e9cbff" stop-opacity="0.42" />
+          <stop offset="1" stop-color="#c58eff" stop-opacity="0" />
+        </radialGradient>
+        <linearGradient id="waterGlow" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ddb7ff" stop-opacity="0.78" />
+          <stop offset="0.5" stop-color="#a882d7" stop-opacity="0.44" />
+          <stop offset="1" stop-color="#66508e" stop-opacity="0.06" />
+        </linearGradient>
+      </defs>
+
+      <rect width="1600" height="900" fill="url(#nightSky)" />
+      <rect y="98" width="1600" height="16" fill="#d5b3ed" opacity="0.08" />
+      <rect y="138" width="1600" height="7" fill="#f4ddff" opacity="0.07" />
+      <rect y="212" width="1600" height="11" fill="#e4c5f7" opacity="0.06" />
+
+      <circle cx="835" cy="244" r="230" fill="url(#moonGlow)" />
+      <circle cx="835" cy="244" r="65" fill="#f8e9ff" opacity="0.92" />
+      <rect x="802" y="213" width="22" height="9" fill="#dbc5ed" opacity="0.45" />
+      <rect x="846" y="260" width="16" height="8" fill="#dbc5ed" opacity="0.38" />
+      <rect x="864" y="226" width="10" height="14" fill="#dbc5ed" opacity="0.33" />
+
+      <g opacity="0.62" fill="#73579a">
+        <polygon points="0,414 110,338 204,370 322,274 430,380 570,314 702,403 842,295 958,365 1082,277 1194,387 1322,302 1440,374 1600,287 1600,560 0,560" />
+      </g>
+      <g opacity="0.85" fill="#45365f">
+        <polygon points="0,506 116,402 228,460 346,347 458,474 585,385 708,498 828,392 948,482 1077,352 1216,485 1334,394 1468,468 1600,370 1600,635 0,635" />
+      </g>
+      <g fill="#2c2340">
+        <polygon points="0,610 116,495 214,559 326,445 438,575 548,468 670,584 790,452 918,577 1035,457 1160,580 1270,474 1398,562 1496,468 1600,530 1600,730 0,730" />
+      </g>
+
+      <g opacity="0.72" fill="#8f6eb1">
+        <rect x="690" y="431" width="290" height="8" />
+        <rect x="640" y="452" width="390" height="6" />
+        <rect x="582" y="474" width="500" height="5" />
+      </g>
+
+      <polygon points="792,430 870,430 1005,900 565,900" fill="url(#waterGlow)" opacity="0.62" />
+      <polygon points="818,430 846,430 902,900 694,900" fill="#e9d2ff" opacity="0.18" />
+      <g fill="#e5c9ff" opacity="0.22">
+        <rect x="747" y="552" width="175" height="6" />
+        <rect x="708" y="643" width="260" height="7" />
+        <rect x="657" y="754" width="362" height="8" />
+      </g>
+
+      <g fill="#201832" opacity="0.98">
+        <g transform="translate(28 350)">
+          <rect x="48" y="90" width="12" height="220" />
+          <polygon points="54,0 0,130 108,130" />
+          <polygon points="54,50 4,180 104,180" />
+          <polygon points="54,103 10,225 98,225" />
+        </g>
+        <g transform="translate(126 420) scale(.78)">
+          <rect x="48" y="90" width="12" height="220" />
+          <polygon points="54,0 0,130 108,130" />
+          <polygon points="54,50 4,180 104,180" />
+          <polygon points="54,103 10,225 98,225" />
+        </g>
+        <g transform="translate(1430 365) scale(.92)">
+          <rect x="48" y="90" width="12" height="220" />
+          <polygon points="54,0 0,130 108,130" />
+          <polygon points="54,50 4,180 104,180" />
+          <polygon points="54,103 10,225 98,225" />
+        </g>
+        <g transform="translate(1325 450) scale(.67)">
+          <rect x="48" y="90" width="12" height="220" />
+          <polygon points="54,0 0,130 108,130" />
+          <polygon points="54,50 4,180 104,180" />
+          <polygon points="54,103 10,225 98,225" />
+        </g>
+      </g>
+
+      <g fill="#171121">
+        <polygon points="0,0 250,0 216,42 252,62 202,86 230,111 160,132 195,158 126,175 150,211 76,230 106,265 0,293" />
+        <polygon points="1600,0 1442,0 1470,39 1424,62 1474,88 1438,118 1510,139 1472,169 1540,190 1506,225 1600,257" />
+      </g>
+      <g fill="#21172d">
+        <rect x="0" y="0" width="34" height="900" />
+        <rect x="1568" y="0" width="32" height="900" />
+        <rect x="0" y="822" width="1600" height="78" />
+        <polygon points="0,705 100,660 190,724 294,680 404,739 520,690 640,744 760,704 872,748 984,691 1114,742 1237,686 1354,732 1460,673 1600,714 1600,900 0,900" />
+      </g>
+
+      <g fill="#2f2440">
+        <polygon points="18,818 38,742 48,818" />
+        <polygon points="55,818 76,718 87,818" />
+        <polygon points="101,818 122,755 134,818" />
+        <polygon points="180,818 201,702 213,818" />
+        <polygon points="244,818 265,744 278,818" />
+        <polygon points="1328,818 1347,731 1358,818" />
+        <polygon points="1390,818 1412,700 1423,818" />
+        <polygon points="1452,818 1472,748 1483,818" />
+        <polygon points="1510,818 1530,718 1542,818" />
+      </g>
+      <g fill="#594268" opacity="0.75">
+        <rect x="90" y="728" width="8" height="100" />
+        <rect x="160" y="754" width="8" height="74" />
+        <rect x="1362" y="750" width="8" height="78" />
+        <rect x="1477" y="724" width="8" height="104" />
+      </g>
+    </svg>
+    <span class="firefly firefly-one"></span>
+    <span class="firefly firefly-two"></span>
+    <span class="firefly firefly-three"></span>
+    <span class="firefly firefly-four"></span>
+  </div>
+  <main class="page-shell">
+    <section class="hero" aria-labelledby="page-title">
+      <div class="hero-copy">
+        <div class="eyebrow"><span aria-hidden="true">✦</span> Cozy collection companion</div>
+        <h1 id="page-title">Critter Catcher</h1>
+        <p>Track every tiny menace, magical flutter, and suspiciously sentient egg. Your checks and personal notes stay saved in this browser.</p>
+        <div class="hero-actions">
+          <button class="button primary" id="showUncaughtBtn" type="button">Show what I still need</button>
+          <button class="button" id="clearFiltersBtn" type="button">Clear filters</button>
+          <div class="menu-wrap">
+            <button class="button ghost" id="moreMenuBtn" type="button" aria-haspopup="menu" aria-expanded="false">More <span aria-hidden="true">⌄</span></button>
+            <div class="menu" id="moreMenu" role="menu">
+              <button type="button" id="exportBtn" role="menuitem"><span aria-hidden="true">⇩</span> Export progress</button>
+              <button type="button" id="importBtn" role="menuitem"><span aria-hidden="true">⇧</span> Import progress</button>
+              <button type="button" id="themeBtn" role="menuitem"><span aria-hidden="true">☼</span> Switch theme</button>
+              <hr />
+              <button type="button" id="resetBtn" class="danger" role="menuitem"><span aria-hidden="true">↺</span> Reset all progress</button>
+            </div>
+          </div>
+          <input class="sr-only" type="file" id="importFile" accept="application/json,.json" />
+        </div>
+      </div>
+      <div class="progress-cluster" aria-live="polite">
+        <div class="progress-ring" id="progressRing">
+          <div class="progress-number"><strong id="progressPercent">0%</strong><span>complete</span></div>
+        </div>
+        <div class="progress-caption"><strong id="progressCaught">0</strong> of <strong id="progressTotal">0</strong> critters caught</div>
+      </div>
+    </section>
+
+    <section class="stats" aria-label="Collection statistics">
+      <article class="stat"><div class="stat-label">Caught</div><div class="stat-value" id="caughtStat">0</div><div class="stat-sub">checked off</div></article>
+      <article class="stat"><div class="stat-label">Remaining</div><div class="stat-value" id="remainingStat">0</div><div class="stat-sub">still lurking</div></article>
+      <article class="stat"><div class="stat-label">Caught value</div><div class="stat-value" id="valueStat">0</div><div class="stat-sub">coins, based on listed prices</div></article>
+      <article class="stat"><div class="stat-label">Special catches</div><div class="stat-value" id="specialStat">0 / 0</div><div class="stat-sub">condition-based critters</div></article>
+    </section>
+
+    <section class="toolbar" aria-label="Critter filters">
+      <div class="toolbar-main">
+        <label class="field search-field">
+          <span>Search</span>
+          <div class="search-wrap">
+            <span class="search-icon" aria-hidden="true">⌕</span>
+            <input class="control" id="searchInput" type="search" placeholder="Name, location, or catch condition…" autocomplete="off" />
+            <span class="shortcut" aria-hidden="true">/</span>
+          </div>
+        </label>
+        <label class="field"><span>Status</span><select class="control" id="statusFilter"><option value="all">All critters</option><option value="uncaught">Uncaught</option><option value="caught">Caught</option></select></label>
+        <label class="field"><span>Season</span><select class="control" id="seasonFilter"><option value="all">Any season</option><option>Spring</option><option>Summer</option><option>Autumn</option><option>Winter</option><option value="special">Special / unspecified</option></select></label>
+        <label class="field"><span>Category</span><select class="control" id="categoryFilter"><option value="all">All categories</option></select></label>
+        <label class="field"><span>Location</span><select class="control" id="locationFilter"><option value="all">All locations</option></select></label>
+        <label class="field view-control"><span>Sort</span><select class="control" id="sortSelect"><option value="name">Name A–Z</option><option value="uncaught">Uncaught first</option><option value="price-desc">Sell price: high to low</option><option value="price-asc">Sell price: low to high</option><option value="location">Location A–Z</option></select></label>
+      </div>
+      <div class="toolbar-extra">
+        <div class="toggle-row">
+          <label class="toggle"><input type="checkbox" id="specialOnly" /> Special conditions only</label>
+          <label class="toggle"><input type="checkbox" id="hideUnknownSeason" /> Hide unspecified seasons</label>
+        </div>
+        <div class="view-switch" aria-label="Change layout">
+          <button type="button" id="gridViewBtn" class="active" aria-label="Card view" aria-pressed="true">▦</button>
+          <button type="button" id="listViewBtn" aria-label="Compact list view" aria-pressed="false">☷</button>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="results-heading">
+      <div class="results-head">
+        <h2 class="results-title" id="results-heading">Critters <span id="resultsCount"></span></h2>
+        <div class="bulk-actions">
+          <button type="button" class="button small" id="catchVisibleBtn">Catch all shown</button>
+          <button type="button" class="button small ghost" id="uncatchVisibleBtn">Uncheck shown</button>
+        </div>
+      </div>
+      <div class="critter-grid" id="critterGrid"></div>
+      <div class="empty-state" id="emptyState">
+        <div><div class="emoji" aria-hidden="true">🕵️‍♀️</div><h2>No critters found</h2><p>Those filters are apparently too powerful. Clear them and the tiny weirdos should return.</p></div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <span><strong id="datasetCount">0</strong> critters loaded • Works offline • Progress stored locally</span>
+      <span>Built from the supplied critter table; type icons are placeholders because the source included image filenames rather than image files.</span>
+    </footer>
+  </main>
+
+  <dialog id="confirmDialog">
+    <form method="dialog" class="dialog-body">
+      <h2 id="dialogTitle">Confirm action</h2>
+      <p id="dialogText"></p>
+      <div class="dialog-actions">
+        <button class="button ghost" value="cancel">Cancel</button>
+        <button class="button danger" id="dialogConfirm" value="confirm">Confirm</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast-stack" id="toastStack" aria-live="polite" aria-atomic="true"></div>
+
+  <script id="critterData" type="application/json">[{"id": "firefly", "name": "Firefly", "category": "Flies", "type": "Fly", "seasons": ["Spring", "Summer", "Autumn", "Winter"], "locations": ["Moonlit Pines", "Howling Marshes"], "price": 100, "notes": "", "iconFile": "Firefly Icon.png"}, {"id": "honeyflutter", "name": "Honeyflutter", "category": "Flies", "type": "Fly", "seasons": ["Spring", "Summer", "Autumn", "Winter"], "locations": ["Player Farm"], "price": 35, "notes": "", "iconFile": "Honeyflutter Icon.png"}, {"id": "bluey", "name": "Bluey", "category": "Beetles", "type": "Beetle", "seasons": ["Spring", "Summer", "Autumn", "Winter"], "locations": ["Luna Bay"], "price": 10, "notes": "", "iconFile": "Bluey Icon.png"}, {"id": "mossback", "name": "Mossback", "category": "Beetles", "type": "Beetle", "seasons": ["Spring", "Summer", "Autumn", "Winter"], "locations": ["Howling Marshes"], "price": 20, "notes": "", "iconFile": "Icon Beetle Mossback.png"}, {"id": "blushbug", "name": "Blushbug", "category": "Beetles", "type": "Beetle", "seasons": ["Spring", "Summer", "Winter"], "locations": ["Luna Bay"], "price": 20, "notes": "", "iconFile": "Icon Beetle Blushbug.png"}, {"id": "murky", "name": "Murky", "category": "Beetles", "type": "Beetle", "seasons": ["Spring", "Summer", "Autumn", "Winter"], "locations": ["Howling Marshes"], "price": 10, "notes": "", "iconFile": "Icon Beetle Murky.png"}, {"id": "buzzer", "name": "Buzzer", "category": "Beetles", "type": "Beetle", "seasons": ["Spring", "Summer", "Autumn"], "locations": ["Moonlit Pines", "Misty Shores", "Town", "Player Farm", "Crest Garden"], "price": 20, "notes": "During A Thunderstorm", "iconFile": "Buzzer Icon.png"}, {"id": "pinky", "name": "Pinky", "category": "Beetles", "type": "Beetle", "seasons": ["Spring", "Summer", "Winter"], "locations": ["Pink Grove"], "price": 10, "notes": "", "iconFile": "Icon Beetle Pinky.png"}, {"id": "inferwing", "name": "Inferwing", "category": "Beetles", "type": "Beetle", "seasons": ["Spring", "Summer", "Autumn", "Winter"], "locations": ["Moonlit Slopes"], "price": 20, "notes": "", "iconFile": "Icon Beetle Inferwing.png"}, {"id": "psyclops", "name": "Psyclops", "category": "Beetles", "type": "Beetle", "seasons": ["Spring", "Summer", "Autumn", "Winter"], "locations": ["Moonlit Pines", "Howling Marshes"], "price": 25, "notes": "In Yabbis Spots", "iconFile": "Icon Beetle psyclops.png"}, {"id": "loomer", "name": "Loomer", "category": "Beetles", "type": "Beetle", "seasons": ["Autumn"], "locations": ["Moonlit Slopes"], "price": 15, "notes": "", "iconFile": "Icon Beetle Loomer.png"}, {"id": "purpy", "name": "Purpy", "category": "Beetles", "type": "Beetle", "seasons": ["Spring", "Summer", "Winter"], "locations": ["Player Farm"], "price": 10, "notes": "", "iconFile": "Icon Beetle Purpy.png"}, {"id": "lovepuff", "name": "Lovepuff", "category": "Beetles", "type": "Beetle", "seasons": ["Spring", "Summer", "Autumn", "Winter"], "locations": ["Player Farm"], "price": 20, "notes": "After Getting Married", "iconFile": "Icon Beetle Lovepuff.png"}, {"id": "skullglint", "name": "Skullglint", "category": "Beetles", "type": "Beetle", "seasons": ["Summer"], "locations": ["Ambrosia Graveyard"], "price": 25, "notes": "", "iconFile": "Icon Beetle Skeleton.png"}, {"id": "midnight", "name": "Midnight", "category": "Beetles", "type": "Beetle", "seasons": ["Spring", "Summer", "Autumn", "Winter"], "locations": ["Player Farm"], "price": 50, "notes": "At 00:00", "iconFile": "Icon Beetle Midnight.png"}, {"id": "twizzler", "name": "Twizzler", "category": "Beetles", "type": "Beetle", "seasons": ["Spring", "Autumn", "Winter"], "locations": ["Misty Shores", "Moonlit Pines"], "price": 50, "notes": "", "iconFile": "Icon Beetle Twizzler.png"}, {"id": "amethyst-wing", "name": "Amethyst Wing", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Winter"], "locations": ["Moonlit Pines"], "price": 50, "notes": "", "iconFile": "Amethyst Wing Icon.png"}, {"id": "pink-gulf", "name": "Pink Gulf", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring"], "locations": ["Pink Grove"], "price": 50, "notes": "Cutting Trees", "iconFile": "Icon Butterfly Pink Gulf.png"}, {"id": "aura", "name": "Aura", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer", "Autumn", "Winter"], "locations": ["Misty Shores", "Player Farm", "Moonlit Pines"], "price": 280, "notes": "", "iconFile": "Aura Icon.png"}, {"id": "pink-handyflap", "name": "Pink Handyflap", "category": "Butterflies", "type": "Butterfly", "seasons": ["Summer"], "locations": ["Twilight Catacombs"], "price": 100, "notes": "", "iconFile": "Icon Butterfly Pink Handyflap.png"}, {"id": "autumn-wing", "name": "Autumn Wing", "category": "Butterflies", "type": "Butterfly", "seasons": ["Autumn"], "locations": ["Player Farm"], "price": 250, "notes": "Last Day of Autumn (28th)", "iconFile": "Autumn Wing Icon.png"}, {"id": "pink-kite", "name": "Pink Kite", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer", "Winter"], "locations": ["Pink Grove"], "price": 50, "notes": "", "iconFile": "Icon Butterfly Pink Kite.png"}, {"id": "batterfly", "name": "Batterfly", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer", "Autumn", "Winter"], "locations": ["Cave of Echoes"], "price": 10, "notes": "", "iconFile": "Batterfly Icon.png"}, {"id": "pink-petal", "name": "Pink Petal", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer", "Autumn", "Winter"], "locations": ["Howling Marshes"], "price": 50, "notes": "From Clearing Weeds or Digging Swirls", "iconFile": "Icon Butterfly Pink Petal.png"}, {"id": "begoniflap", "name": "Begoniflap", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer", "Autumn", "Winter"], "locations": ["Moonlit Slopes"], "price": 20, "notes": "", "iconFile": "Begoniflap Icon.png"}, {"id": "pink-sliver", "name": "Pink Sliver", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Autumn", "Winter"], "locations": ["Howling Marshes"], "price": 50, "notes": "From Clearing Weeds / From Dig Spots", "iconFile": "Icon Butterfly Pink sliver.png"}, {"id": "beige-breezer", "name": "Beige Breezer", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer", "Winter"], "locations": ["Pink Grove"], "price": 20, "notes": "", "iconFile": "Beige Breezer Icon.png"}, {"id": "pink-swallow", "name": "Pink Swallow", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer"], "locations": ["Moonlit Pines", "Town", "Player Farm", "Crest Garden"], "price": 20, "notes": "", "iconFile": "Icon Butterfly Pink Swallow.png"}, {"id": "blue-gulf", "name": "Blue Gulf", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer", "Winter"], "locations": ["Moonlit Pines"], "price": 15, "notes": "", "iconFile": "Blue Gulf Icon.png"}, {"id": "pinkleaf", "name": "Pinkleaf", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer", "Autumn", "Winter"], "locations": ["Crystal Cave"], "price": 20, "notes": "", "iconFile": "Icon Butterfly Pink Leaf.png"}, {"id": "blue-swallow", "name": "Blue Swallow", "category": "Butterflies", "type": "Butterfly", "seasons": ["Winter"], "locations": ["Moonlit Pines"], "price": 20, "notes": "", "iconFile": "Blue Swallow Icon.png"}, {"id": "purple-flap", "name": "Purple Flap", "category": "Butterflies", "type": "Butterfly", "seasons": ["Autumn"], "locations": ["Luna Bay"], "price": 20, "notes": "", "iconFile": "Icon Butterfly Purple Flap.png"}, {"id": "blueleaf", "name": "Blueleaf", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer", "Winter"], "locations": ["Crest Garden", "Misty Shores", "Town", "Player Farm"], "price": 20, "notes": "", "iconFile": "Blueleaf Icon.png"}, {"id": "purple-gulf", "name": "Purple Gulf", "category": "Butterflies", "type": "Butterfly", "seasons": ["Autumn", "Winter"], "locations": ["Luna Bay"], "price": 35, "notes": "", "iconFile": "Icon Butterfly Purple Gulf.png"}, {"id": "citrineflutter", "name": "Citrineflutter", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer", "Autumn", "Winter"], "locations": ["Misty Shores"], "price": 50, "notes": "", "iconFile": "Citrineflutter Icon.png"}, {"id": "purple-handyflap", "name": "Purple Handyflap", "category": "Butterflies", "type": "Butterfly", "seasons": ["Summer"], "locations": ["Twilight Catacombs"], "price": 35, "notes": "", "iconFile": "Icon Butterfly Purple Handyflap.png"}, {"id": "diamontra", "name": "Diamontra", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer", "Winter"], "locations": ["Cave of Echoes"], "price": 110, "notes": "From Breaking Rocks", "iconFile": "Diamontra Icon.png"}, {"id": "purple-morpho", "name": "Purple Morpho", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer", "Winter"], "locations": ["Luna Bay"], "price": 35, "notes": "", "iconFile": "Icon Butterfly Purple Morpho.png"}, {"id": "fader", "name": "Fader", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer", "Autumn", "Winter"], "locations": ["Cave of Echoes"], "price": 110, "notes": "From Breaking Rocks", "iconFile": "Fader Icon.png"}, {"id": "purple-sliver", "name": "Purple Sliver", "category": "Butterflies", "type": "Butterfly", "seasons": ["Winter"], "locations": ["Player Farm"], "price": 50, "notes": "", "iconFile": "Purple Sliver Icon.png"}, {"id": "flamboyance", "name": "Flamboyance", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer", "Winter"], "locations": ["Luna Bay", "Moonlit Pines", "Misty Shores"], "price": 55, "notes": "From Clearing Weeds", "iconFile": "Flamboyance Icon.png"}, {"id": "red-lady", "name": "Red Lady", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer", "Winter"], "locations": ["Moonlit Slopes"], "price": 55, "notes": "From Clearing Weeds", "iconFile": "Icon Butterfly Red Lady.png"}, {"id": "frost-flutter", "name": "Frost Flutter", "category": "Butterflies", "type": "Butterfly", "seasons": ["Winter"], "locations": ["Player Farm", "Town", "Misty Shores", "Moonlit Pines"], "price": 15, "notes": "", "iconFile": "Frost Flutter Icon.png"}, {"id": "red-morpho", "name": "Red Morpho", "category": "Butterflies", "type": "Butterfly", "seasons": ["Summer", "Autumn", "Winter"], "locations": ["Moonlit Slopes"], "price": 300, "notes": "", "iconFile": "Icon Butterfly Red Morpho.png"}, {"id": "frostleaf", "name": "Frostleaf", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer", "Winter"], "locations": ["Player Farm", "Crest Garden", "Moonlit Pines", "Moonlit Slopes"], "price": 25, "notes": "", "iconFile": "Frostleaf Icon.png"}, {"id": "red-flutter", "name": "Red Flutter", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer", "Autumn", "Winter"], "locations": ["Misty Shores"], "price": 10, "notes": "", "iconFile": "Icon Butterfly Red Flutter.png"}, {"id": "green-lady", "name": "Green Lady", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring"], "locations": ["Player Farm"], "price": 55, "notes": "", "iconFile": "Green Lady Icon.png"}, {"id": "roseleaf", "name": "Roseleaf", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Winter"], "locations": ["Moonlit Pines"], "price": 20, "notes": "From Clearing Weeds", "iconFile": "Roseleaf Icon.png"}, {"id": "green-petal", "name": "Green Petal", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer", "Winter"], "locations": ["Moonlit Pines"], "price": 55, "notes": "From Clearing Weeds", "iconFile": "Icon Butterfly Green Petal.png"}, {"id": "rosetide", "name": "Rosetide", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Autumn"], "locations": ["Misty Shores"], "price": 25, "notes": "", "iconFile": "Icon Butterfly Rosetide.png"}, {"id": "haunted-page", "name": "Haunted Page", "category": "Butterflies", "type": "Butterfly", "seasons": [], "locations": ["Town Hall"], "price": 40, "notes": "", "iconFile": "Icon Butterfly Haunted Page.png"}, {"id": "rouge-petal", "name": "Rouge Petal", "category": "Butterflies", "type": "Butterfly", "seasons": ["Summer", "Winter"], "locations": ["Moonlit Pines", "Moonlight Peaks"], "price": 50, "notes": "From Clearing Weeds", "iconFile": "Icon Butterfly Rogue Petal.png"}, {"id": "indigowisp", "name": "Indigowisp", "category": "Butterflies", "type": "Butterfly", "seasons": ["Autumn", "Winter"], "locations": ["Luna Bay"], "price": 100, "notes": "", "iconFile": "Icon Butterfly indigowhisp.png"}, {"id": "ruby-wing", "name": "Ruby Wing", "category": "Butterflies", "type": "Butterfly", "seasons": ["Summer", "Autumn", "Winter"], "locations": ["Moonlit Slopes"], "price": 100, "notes": "", "iconFile": "Icon Butterfly ruby Wing.png"}, {"id": "jader", "name": "Jader", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer"], "locations": ["Cave of Echoes"], "price": 110, "notes": "From Breaking Rocks", "iconFile": "Jader Icon.png"}, {"id": "silver-sister", "name": "Silver Sister", "category": "Butterflies", "type": "Butterfly", "seasons": ["Winter"], "locations": ["Luna Bay"], "price": 20, "notes": "", "iconFile": "Icon Butterfly Silver Sister.png"}, {"id": "kamehameha", "name": "Kamehameha", "category": "Butterflies", "type": "Butterfly", "seasons": ["Summer", "Winter"], "locations": ["Crest Garden"], "price": 110, "notes": "", "iconFile": "Kamehameha Icon.png"}, {"id": "skin-duster", "name": "Skin Duster", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer", "Autumn", "Winter"], "locations": ["Howling Marshes"], "price": 30, "notes": "From Clearing Weeds", "iconFile": "Icon Butterfly Skin Duster.png"}, {"id": "lakeflutter", "name": "Lakeflutter", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer", "Autumn", "Winter"], "locations": ["Misty Shores"], "price": 50, "notes": "", "iconFile": "Icon Butterfly LakeFlutter.png"}, {"id": "spotted-wings", "name": "Spotted Wings", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer", "Autumn", "Winter"], "locations": ["Misty Shores", "Player Farm", "Luna Bay"], "price": 50, "notes": "From Digging Swirls", "iconFile": "Icon Butterfly SpottedWing.png"}, {"id": "limer", "name": "Limer", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer", "Winter"], "locations": ["Howling Marshes"], "price": 50, "notes": "", "iconFile": "Icon Butterfly Limer.png"}, {"id": "spring-wing", "name": "Spring Wing", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring"], "locations": ["Player Farm"], "price": 250, "notes": "Last Day of Spring (28th)", "iconFile": "Icon Butterfly Spring Wing.png"}, {"id": "moon-glimmer", "name": "Moon Glimmer", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer", "Autumn", "Winter"], "locations": ["Lost Moon Alcove"], "price": 10, "notes": "", "iconFile": "Icon Butterfly Moon Glimmer.png"}, {"id": "summer-wing", "name": "Summer Wing", "category": "Butterflies", "type": "Butterfly", "seasons": ["Summer"], "locations": ["Player Farm"], "price": null, "notes": "Last Day of Summer (28th)", "iconFile": "Icon Butterfly Summer Wing.png"}, {"id": "orange-flutter", "name": "Orange Flutter", "category": "Butterflies", "type": "Butterfly", "seasons": ["Summer"], "locations": ["Player Farm"], "price": 15, "notes": "", "iconFile": "Icon Butterfly Orange Flutter.png"}, {"id": "turquoise-sliver", "name": "Turquoise Sliver", "category": "Butterflies", "type": "Butterfly", "seasons": ["Winter"], "locations": ["Moonlit Pines"], "price": 55, "notes": "", "iconFile": "Icon Butterfly Turqoise Sliver.png"}, {"id": "orange-petal", "name": "Orange Petal", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Autumn", "Winter"], "locations": ["Player Farm", "Moonlit Pines"], "price": 55, "notes": "From Clearing Weeds", "iconFile": "Icon Butterfly Orange Petal.png"}, {"id": "violet-duster", "name": "Violet Duster", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer"], "locations": ["Misty Shores", "Howling Marshes"], "price": 20, "notes": "After using a Fairy Ring", "iconFile": "Icon Butterfly Violet Duster.png"}, {"id": "peachbliss", "name": "Peachbliss", "category": "Butterflies", "type": "Butterfly", "seasons": ["Summer", "Winter"], "locations": ["Pink Grove"], "price": 35, "notes": "", "iconFile": "Icon Butterfly Peachbliss.png"}, {"id": "vitra-wing", "name": "Vitra Wing", "category": "Butterflies", "type": "Butterfly", "seasons": ["Summer", "Winter"], "locations": ["Crystal Cave"], "price": 100, "notes": "", "iconFile": "Icon Butterfly Vitrawing.png"}, {"id": "petal-flap", "name": "Petal Flap", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring"], "locations": ["Moonlit Pines", "Player Farm"], "price": 50, "notes": "From Clearing Weeds / From Harvesting (Wheat?)", "iconFile": "Icon Butterfly Petal Flap.png"}, {"id": "white-bat", "name": "White Bat", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer"], "locations": ["Cave of Echoes"], "price": 250, "notes": "", "iconFile": "Icon Butterfly White Bat.png"}, {"id": "phlox", "name": "Phlox", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer", "Autumn"], "locations": ["Moonlit Slopes"], "price": 110, "notes": "Chopping Trees", "iconFile": "Phlox Icon.png"}, {"id": "winter-wing", "name": "Winter Wing", "category": "Butterflies", "type": "Butterfly", "seasons": ["Winter"], "locations": ["Player Farm"], "price": 250, "notes": "During Winterwake Event", "iconFile": "Icon Butterfly Winter Wing.png"}, {"id": "pink-breezer", "name": "Pink Breezer", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer", "Winter"], "locations": ["Pink Grove"], "price": 15, "notes": "", "iconFile": "Icon Butterfly Pink Breezer.png"}, {"id": "yabberwing", "name": "Yabberwing", "category": "Butterflies", "type": "Butterfly", "seasons": ["Spring", "Summer", "Winter"], "locations": ["Moonlit Slopes"], "price": 50, "notes": "During early morning hours", "iconFile": "Icon Butterfly Yabberwing.png"}, {"id": "pink-glow", "name": "Pink Glow", "category": "Butterflies", "type": "Butterfly", "seasons": ["Winter"], "locations": ["Pink Grove", "Crystal Cave"], "price": 35, "notes": "", "iconFile": "Icon Butterfly Pink Glow.png"}, {"id": "peeky", "name": "Peeky", "category": "Crawlers", "type": "Spider", "seasons": [], "locations": ["Player Farm"], "price": 50, "notes": "After Harvesting A Googly Garlic", "iconFile": "Peeky Icon.png"}, {"id": "sweetbug", "name": "Sweetbug", "category": "Crawlers", "type": "Spider", "seasons": [], "locations": ["Player Farm"], "price": 55, "notes": "After Harvesting A Fully Grown Blood Orange Tree", "iconFile": "Sweetbug Icon.png"}, {"id": "pumkrawler", "name": "Pumkrawler", "category": "Crawlers", "type": "Spider", "seasons": ["Autumn"], "locations": ["Player Farm"], "price": 50, "notes": "After Harvesting A Pumpkin", "iconFile": "Pumkrawler Icon.png"}, {"id": "turdy", "name": "Turdy", "category": "Crawlers", "type": "Spider", "seasons": ["Spring", "Summer", "Autumn", "Winter"], "locations": ["Player Farm"], "price": 10, "notes": "Fertilizer Bin Reaches 100", "iconFile": "Turdy Icon.png"}, {"id": "skully", "name": "Skully", "category": "Crawlers", "type": "Spider", "seasons": ["Spring", "Summer", "Autumn"], "locations": ["Ambrosia Graveyard"], "price": 35, "notes": "", "iconFile": "Skully Icon.png"}, {"id": "glorph", "name": "Glorph", "category": "Crawlers", "type": "Slime", "seasons": ["Spring", "Summer", "Autumn", "Winter"], "locations": ["Howling Marshes"], "price": 40, "notes": "", "iconFile": "Glorph Icon.png"}, {"id": "sourbug", "name": "Sourbug", "category": "Crawlers", "type": "Spider", "seasons": [], "locations": ["Player Farm"], "price": 50, "notes": "After Harvesting A Fully Grown Lemon Tree", "iconFile": "Sourbug Icon.png"}, {"id": "twigster", "name": "Twigster", "category": "Crawlers", "type": "Stickbug", "seasons": ["Spring", "Summer", "Winter"], "locations": ["Howling Marshes"], "price": 40, "notes": "", "iconFile": "Twigster Icon.png"}, {"id": "sprouty", "name": "Sprouty", "category": "Crawlers", "type": "Spider", "seasons": [], "locations": ["Player Farm"], "price": 110, "notes": "After Harvesting A Crop", "iconFile": "Sprouty Icon.png"}, {"id": "harry", "name": "Harry", "category": "Snails & Slugs", "type": "Rat", "seasons": ["Spring", "Winter"], "locations": ["Twilight Catacombs"], "price": 100, "notes": "", "iconFile": "Icon Harry.png"}, {"id": "spiral-snail", "name": "Spiral Snail", "category": "Snails & Slugs", "type": "Snail", "seasons": ["Spring", "Summer", "Autumn"], "locations": ["Howling Marshes"], "price": 20, "notes": "", "iconFile": "Icon Snail Spiral.png"}, {"id": "maud", "name": "Maud", "category": "Snails & Slugs", "type": "Rat", "seasons": ["Spring", "Winter"], "locations": ["Twilight Catacombs"], "price": 35, "notes": "Can receive as gift from Hellkitten", "iconFile": "Icon Maud.png"}, {"id": "sluggy", "name": "Sluggy", "category": "Snails & Slugs", "type": "Slug", "seasons": ["Spring", "Summer", "Winter"], "locations": ["Moonlit Pines"], "price": 15, "notes": "While Raining", "iconFile": "Icon Snail Sluggy.png"}, {"id": "dreamshell", "name": "Dreamshell", "category": "Snails & Slugs", "type": "Snail", "seasons": ["Spring", "Summer", "Winter"], "locations": ["Pink Grove", "Khazan Temple"], "price": 35, "notes": "", "iconFile": "Icon Snail Dreamshell.png"}, {"id": "deviled-sunny", "name": "Deviled Sunny", "category": "Snails & Slugs", "type": "Sentient Egg", "seasons": [], "locations": ["Moonlit Slopes"], "price": 20, "notes": "After Cooking A Fried Egg", "iconFile": "Icon Deviled Sunny.png"}, {"id": "shellycone", "name": "Shellycone", "category": "Snails & Slugs", "type": "Snail", "seasons": ["Spring", "Summer", "Winter"], "locations": ["Luna Bay"], "price": 10, "notes": "", "iconFile": "Icon Snail Shellycone.png"}, {"id": "sunny", "name": "Sunny", "category": "Snails & Slugs", "type": "Sentient Egg", "seasons": ["Spring", "Summer", "Autumn", "Winter"], "locations": ["Player Farm"], "price": 10, "notes": "After Cooking A Fried Egg", "iconFile": "Icon Sunny.png"}, {"id": "skull-snail", "name": "Skull Snail", "category": "Snails & Slugs", "type": "Snail", "seasons": ["Summer", "Winter"], "locations": ["Ambrosia Graveyard"], "price": 15, "notes": "", "iconFile": "Icon Snail Skull.png"}]</script>
+  <script>
+    (() => {
+      'use strict';
+
+      const critters = JSON.parse(document.getElementById('critterData').textContent);
+      const byId = new Map(critters.map(c => [c.id, c]));
+      const storageKeys = {
+        caught: 'critterCatcher.v1.caught',
+        notes: 'critterCatcher.v1.notes',
+        settings: 'critterCatcher.v1.settings'
+      };
+
+      const typeIcons = {
+        Butterfly: '🦋', Beetle: '🪲', Fly: '🪰', Spider: '🕷️', Snail: '🐌', Slug: '🐌',
+        Rat: '🐀', Slime: '🫧', Stickbug: '🌿', 'Sentient Egg': '🥚'
+      };
+
+      const els = Object.fromEntries([
+        'critterGrid','emptyState','searchInput','statusFilter','seasonFilter','categoryFilter','locationFilter','sortSelect',
+        'specialOnly','hideUnknownSeason','resultsCount','progressRing','progressPercent','progressCaught','progressTotal',
+        'caughtStat','remainingStat','valueStat','specialStat','datasetCount','showUncaughtBtn','clearFiltersBtn','catchVisibleBtn',
+        'uncatchVisibleBtn','gridViewBtn','listViewBtn','moreMenuBtn','moreMenu','exportBtn','importBtn','importFile','themeBtn',
+        'resetBtn','confirmDialog','dialogTitle','dialogText','dialogConfirm','toastStack'
+      ].map(id => [id, document.getElementById(id)]));
+
+      const safeStorage = {
+        get(key, fallback) {
+          try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
+          catch { return fallback; }
+        },
+        set(key, value) {
+          try { localStorage.setItem(key, JSON.stringify(value)); return true; }
+          catch { toast('This browser blocked local saving. Use Export progress as a backup.', 'bad'); return false; }
+        }
+      };
+
+      const caught = new Set(safeStorage.get(storageKeys.caught, []).filter(id => byId.has(id)));
+      const notes = safeStorage.get(storageKeys.notes, {});
+      const savedSettings = safeStorage.get(storageKeys.settings, {});
+      let visibleIds = [];
+      let noteTimers = new Map();
+
+      function escapeHTML(value = '') {
+        return String(value).replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+      }
+      function normalize(value = '') { return String(value).toLowerCase().trim(); }
+      function formatCoins(value) { return Number.isFinite(value) ? value.toLocaleString() : 'Unknown'; }
+      function saveCaught() { safeStorage.set(storageKeys.caught, [...caught]); }
+      function saveNotes() { safeStorage.set(storageKeys.notes, notes); }
+      function saveSettings() {
+        safeStorage.set(storageKeys.settings, {
+          theme: document.documentElement.dataset.theme,
+          view: els.critterGrid.classList.contains('list-view') ? 'list' : 'grid'
+        });
+      }
+
+      function toast(message, tone = 'good') {
+        const item = document.createElement('div');
+        item.className = `toast ${tone}`;
+        item.textContent = message;
+        els.toastStack.appendChild(item);
+        setTimeout(() => item.remove(), 2800);
+      }
+
+      function hasSpecialCondition(critter) { return Boolean(critter.notes); }
+      function isAllSeason(critter) { return critter.seasons.length === 4; }
+      function seasonHTML(critter) {
+        if (!critter.seasons.length) return '<span class="chip">Special / unspecified</span>';
+        if (isAllSeason(critter)) return '<span class="chip">All seasons</span>';
+        return critter.seasons.map(s => `<span class="chip ${normalize(s)}">${escapeHTML(s)}</span>`).join('');
+      }
+      function locationText(critter) { return critter.locations.join(' • '); }
+      function searchBlob(critter) {
+        return normalize([critter.name, critter.category, critter.type, locationText(critter), critter.notes, critter.seasons.join(' ')].join(' '));
+      }
+
+      function cardHTML(critter) {
+        const isCaught = caught.has(critter.id);
+        const special = critter.notes
+          ? `<div class="special-note"><span aria-hidden="true">✦</span><span>${escapeHTML(critter.notes)}</span></div>`
+          : `<div class="special-note missing"><span aria-hidden="true">○</span><span>No special catch condition listed</span></div>`;
+        return `<article class="critter-card ${isCaught ? 'caught' : ''}" data-id="${escapeHTML(critter.id)}">
+          <div class="caught-strip" aria-hidden="true"></div>
+          <div class="card-main">
+            <div class="type-icon" title="${escapeHTML(critter.iconFile || critter.type)}" aria-hidden="true">${typeIcons[critter.type] || '✦'}</div>
+            <div><h3 class="critter-name">${escapeHTML(critter.name)}</h3><div class="critter-type">${escapeHTML(critter.type)} · ${escapeHTML(critter.category)}</div></div>
+            <label class="catch-check" title="Mark ${escapeHTML(critter.name)} as ${isCaught ? 'uncaught' : 'caught'}">
+              <input type="checkbox" class="caught-checkbox" ${isCaught ? 'checked' : ''} aria-label="Caught ${escapeHTML(critter.name)}" />
+              <span class="checkmark" aria-hidden="true">✓</span>
+            </label>
+          </div>
+          <div class="card-facts">
+            <div class="fact-row"><span class="fact-icon" aria-hidden="true">📍</span><span><strong>${escapeHTML(locationText(critter))}</strong></span></div>
+            <div class="fact-row"><span class="fact-icon" aria-hidden="true">◷</span><div class="chips">${seasonHTML(critter)}</div></div>
+            <div class="fact-row"><span class="fact-icon" aria-hidden="true">●</span><span><strong>${formatCoins(critter.price)}</strong> ${Number.isFinite(critter.price) ? 'coins' : 'sell price'}</span></div>
+            ${special}
+          </div>
+          <details class="card-details">
+            <summary>My notes</summary>
+            <div class="details-content">
+              <div class="personal-note">
+                <label for="note-${escapeHTML(critter.id)}">Remember a route, landmark, or strategy</label>
+                <textarea id="note-${escapeHTML(critter.id)}" class="note-input" placeholder="Example: found near the bridge after 8 PM…">${escapeHTML(notes[critter.id] || '')}</textarea>
+                <div class="saved-hint" aria-live="polite"></div>
+              </div>
+            </div>
+          </details>
+        </article>`;
+      }
+
+      function getFilteredCritters() {
+        const query = normalize(els.searchInput.value);
+        const status = els.statusFilter.value;
+        const season = els.seasonFilter.value;
+        const category = els.categoryFilter.value;
+        const location = els.locationFilter.value;
+        const specialOnly = els.specialOnly.checked;
+        const hideUnknown = els.hideUnknownSeason.checked;
+
+        const filtered = critters.filter(critter => {
+          if (query && !searchBlob(critter).includes(query)) return false;
+          if (status === 'caught' && !caught.has(critter.id)) return false;
+          if (status === 'uncaught' && caught.has(critter.id)) return false;
+          if (season === 'special' && critter.seasons.length) return false;
+          if (!['all','special'].includes(season) && !critter.seasons.includes(season)) return false;
+          if (category !== 'all' && critter.category !== category) return false;
+          if (location !== 'all' && !critter.locations.includes(location)) return false;
+          if (specialOnly && !hasSpecialCondition(critter)) return false;
+          if (hideUnknown && !critter.seasons.length) return false;
+          return true;
+        });
+
+        const sort = els.sortSelect.value;
+        filtered.sort((a,b) => {
+          if (sort === 'uncaught') return Number(caught.has(a.id)) - Number(caught.has(b.id)) || a.name.localeCompare(b.name);
+          if (sort === 'price-desc') return (b.price ?? -Infinity) - (a.price ?? -Infinity) || a.name.localeCompare(b.name);
+          if (sort === 'price-asc') return (a.price ?? Infinity) - (b.price ?? Infinity) || a.name.localeCompare(b.name);
+          if (sort === 'location') return locationText(a).localeCompare(locationText(b)) || a.name.localeCompare(b.name);
+          return a.name.localeCompare(b.name);
+        });
+        return filtered;
+      }
+
+      function render() {
+        const filtered = getFilteredCritters();
+        visibleIds = filtered.map(c => c.id);
+        els.critterGrid.innerHTML = filtered.map(cardHTML).join('');
+        els.resultsCount.textContent = `(${filtered.length} shown)`;
+        els.emptyState.classList.toggle('show', filtered.length === 0);
+        els.critterGrid.hidden = filtered.length === 0;
+        bindRenderedEvents();
+        updateStats();
+      }
+
+      function bindRenderedEvents() {
+        els.critterGrid.querySelectorAll('.caught-checkbox').forEach(input => {
+          input.addEventListener('change', event => {
+            const card = event.target.closest('.critter-card');
+            const id = card.dataset.id;
+            if (event.target.checked) caught.add(id); else caught.delete(id);
+            saveCaught();
+            card.classList.toggle('caught', event.target.checked);
+            updateStats();
+            if (els.statusFilter.value !== 'all') render();
+          });
+        });
+        els.critterGrid.querySelectorAll('.note-input').forEach(input => {
+          input.addEventListener('input', event => {
+            const card = event.target.closest('.critter-card');
+            const id = card.dataset.id;
+            const hint = event.target.parentElement.querySelector('.saved-hint');
+            clearTimeout(noteTimers.get(id));
+            hint.textContent = 'Saving…';
+            noteTimers.set(id, setTimeout(() => {
+              const value = event.target.value.trimEnd();
+              if (value) notes[id] = value; else delete notes[id];
+              saveNotes();
+              hint.textContent = 'Saved';
+              setTimeout(() => { if (hint.isConnected) hint.textContent = ''; }, 1200);
+            }, 350));
+          });
+        });
+      }
+
+      function updateStats() {
+        const caughtCritters = critters.filter(c => caught.has(c.id));
+        const total = critters.length;
+        const caughtCount = caughtCritters.length;
+        const percent = total ? Math.round((caughtCount / total) * 100) : 0;
+        const value = caughtCritters.reduce((sum,c) => sum + (c.price || 0), 0);
+        const specialAll = critters.filter(hasSpecialCondition);
+        const specialCaught = specialAll.filter(c => caught.has(c.id));
+        els.progressRing.style.setProperty('--progress', `${percent * 3.6}deg`);
+        els.progressPercent.textContent = `${percent}%`;
+        els.progressCaught.textContent = caughtCount;
+        els.progressTotal.textContent = total;
+        els.caughtStat.textContent = caughtCount;
+        els.remainingStat.textContent = total - caughtCount;
+        els.valueStat.textContent = value.toLocaleString();
+        els.specialStat.textContent = `${specialCaught.length} / ${specialAll.length}`;
+      }
+
+      function fillFilters() {
+        const categories = [...new Set(critters.map(c => c.category))].sort();
+        const locations = [...new Set(critters.flatMap(c => c.locations))].sort();
+        els.categoryFilter.insertAdjacentHTML('beforeend', categories.map(v => `<option>${escapeHTML(v)}</option>`).join(''));
+        els.locationFilter.insertAdjacentHTML('beforeend', locations.map(v => `<option>${escapeHTML(v)}</option>`).join(''));
+      }
+
+      function clearFilters() {
+        els.searchInput.value = '';
+        els.statusFilter.value = 'all';
+        els.seasonFilter.value = 'all';
+        els.categoryFilter.value = 'all';
+        els.locationFilter.value = 'all';
+        els.sortSelect.value = 'name';
+        els.specialOnly.checked = false;
+        els.hideUnknownSeason.checked = false;
+        render();
+      }
+
+      function setView(view) {
+        const list = view === 'list';
+        els.critterGrid.classList.toggle('list-view', list);
+        els.gridViewBtn.classList.toggle('active', !list);
+        els.listViewBtn.classList.toggle('active', list);
+        els.gridViewBtn.setAttribute('aria-pressed', String(!list));
+        els.listViewBtn.setAttribute('aria-pressed', String(list));
+        saveSettings();
+      }
+
+      function setTheme(theme) {
+        document.documentElement.dataset.theme = theme;
+        saveSettings();
+      }
+
+      function exportProgress() {
+        const payload = {
+          app: 'Critter Catcher', version: 1,
+          exportedAt: new Date().toISOString(),
+          caught: [...caught], notes
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `critter-catcher-progress-${new Date().toISOString().slice(0,10)}.json`;
+        document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
+        toast('Progress backup exported.');
+      }
+
+      async function importProgress(file) {
+        try {
+          const payload = JSON.parse(await file.text());
+          if (!payload || !Array.isArray(payload.caught) || typeof payload.notes !== 'object') throw new Error('Invalid format');
+          caught.clear();
+          payload.caught.filter(id => byId.has(id)).forEach(id => caught.add(id));
+          Object.keys(notes).forEach(key => delete notes[key]);
+          Object.entries(payload.notes || {}).forEach(([id,value]) => { if (byId.has(id) && typeof value === 'string') notes[id] = value; });
+          saveCaught(); saveNotes(); render();
+          toast(`Imported ${caught.size} caught critters.`);
+        } catch {
+          toast('That file does not look like a Critter Catcher backup.', 'bad');
+        } finally {
+          els.importFile.value = '';
+        }
+      }
+
+      function confirmAction(title, text, confirmLabel = 'Confirm') {
+        return new Promise(resolve => {
+          els.dialogTitle.textContent = title;
+          els.dialogText.textContent = text;
+          els.dialogConfirm.textContent = confirmLabel;
+          const onClose = () => { els.confirmDialog.removeEventListener('close', onClose); resolve(els.confirmDialog.returnValue === 'confirm'); };
+          els.confirmDialog.addEventListener('close', onClose);
+          els.confirmDialog.showModal();
+        });
+      }
+
+      function closeMenu() { els.moreMenu.classList.remove('open'); els.moreMenuBtn.setAttribute('aria-expanded','false'); }
+
+      ['input','change'].forEach(eventName => {
+        [els.searchInput,els.statusFilter,els.seasonFilter,els.categoryFilter,els.locationFilter,els.sortSelect,els.specialOnly,els.hideUnknownSeason]
+          .forEach(control => control.addEventListener(eventName, event => {
+            if ((eventName === 'input' && event.target !== els.searchInput) || (eventName === 'change' && event.target === els.searchInput)) return;
+            render();
+          }));
+      });
+
+      els.showUncaughtBtn.addEventListener('click', () => { els.statusFilter.value = 'uncaught'; render(); document.getElementById('results-heading').scrollIntoView({behavior:'smooth'}); });
+      els.clearFiltersBtn.addEventListener('click', clearFilters);
+      els.gridViewBtn.addEventListener('click', () => setView('grid'));
+      els.listViewBtn.addEventListener('click', () => setView('list'));
+      els.catchVisibleBtn.addEventListener('click', async () => {
+        if (!visibleIds.length) return;
+        const ok = await confirmAction('Catch everything shown?', `This will mark ${visibleIds.length} currently visible critter${visibleIds.length === 1 ? '' : 's'} as caught.`, 'Catch them');
+        if (!ok) return;
+        visibleIds.forEach(id => caught.add(id)); saveCaught(); render(); toast('Visible critters marked as caught.');
+      });
+      els.uncatchVisibleBtn.addEventListener('click', async () => {
+        if (!visibleIds.length) return;
+        const ok = await confirmAction('Uncheck everything shown?', `This will remove the caught check from ${visibleIds.length} currently visible critter${visibleIds.length === 1 ? '' : 's'}.`, 'Uncheck them');
+        if (!ok) return;
+        visibleIds.forEach(id => caught.delete(id)); saveCaught(); render(); toast('Visible critters unchecked.');
+      });
+      els.moreMenuBtn.addEventListener('click', event => {
+        event.stopPropagation();
+        const open = !els.moreMenu.classList.contains('open');
+        els.moreMenu.classList.toggle('open', open); els.moreMenuBtn.setAttribute('aria-expanded', String(open));
+      });
+      document.addEventListener('click', event => { if (!event.target.closest('.menu-wrap')) closeMenu(); });
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') closeMenu();
+        if (event.key === '/' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) { event.preventDefault(); els.searchInput.focus(); }
+      });
+      els.exportBtn.addEventListener('click', () => { closeMenu(); exportProgress(); });
+      els.importBtn.addEventListener('click', () => { closeMenu(); els.importFile.click(); });
+      els.importFile.addEventListener('change', event => event.target.files[0] && importProgress(event.target.files[0]));
+      els.themeBtn.addEventListener('click', () => {
+        closeMenu();
+        setTheme(document.documentElement.dataset.theme === 'midnight' ? 'daylight' : 'midnight');
+      });
+      els.resetBtn.addEventListener('click', async () => {
+        closeMenu();
+        const ok = await confirmAction('Reset all progress?', 'This clears every caught check and every personal note. Export a backup first if you might want it later.', 'Reset everything');
+        if (!ok) return;
+        caught.clear(); Object.keys(notes).forEach(key => delete notes[key]); saveCaught(); saveNotes(); render(); toast('All progress reset.');
+      });
+
+      fillFilters();
+      els.datasetCount.textContent = critters.length;
+      const preferredTheme = savedSettings.theme || 'midnight';
+      setTheme(preferredTheme);
+      setView(savedSettings.view || 'grid');
+      render();
+    })();
+  </script>
+</body>
+</html>
